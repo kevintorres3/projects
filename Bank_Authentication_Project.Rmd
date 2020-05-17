@@ -11,7 +11,7 @@ output: html_document
 Load csv file:
 
 ```{r setup, include=TRUE}
-bank <- read.csv('Desktop/R Folder/bank_note_data.csv')
+bank <- read.csv('bank_note_data.csv')
 head(bank)
 str(bank) 
 ```

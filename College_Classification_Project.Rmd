@@ -1,0 +1,125 @@
+---
+title: "College Classification Project"
+author: Kevin Torres
+output: html_document
+---
+
+**Task:** I will explore the use of tree methods to classify schools as Private or Public based off their features. 
+
+**Dataset:** I will be using data which is included in the ISLR library in R, the College data frame. 
+
+Call the necessary library and re-assign the data 
+
+```{r setup, include=TRUE}
+library(ISLR)
+
+head(College)
+df <- data.frame(College)
+```
+
+Exploratory Data Analysis 
+
+```{r}
+library(ggplot2)
+# Scatterplot of graduation rate versus room and board rate, colored by the Private column
+ggplot(df, aes(Room.Board, Grad.Rate, color = Private)) + geom_point() + theme_bw()
+
+# Histogram of full time undergraduate students, colored by the Private column
+ggplot(df, aes(F.Undergrad, fill = Private)) + geom_histogram(bins = 50, color = 'black') + theme_bw()
+
+# Histogram of graduation rate colored by Private
+ggplot(df, aes(Grad.Rate, fill = Private)) + geom_histogram(bins = 50, color = 'black') + theme_bw()
+# We find there is a college that has a graduation rate over 100
+```
+
+Find and change the graduation rate of this university to 100
+
+```{r}
+subset(df, Grad.Rate > 100)
+df['Cazenovia College', 'Grad.Rate'] <- 100
+
+# Check the histogram to see if the value is no longer above 100
+ggplot(df, aes(Grad.Rate, fill = Private)) + geom_histogram(bins = 50, color = 'black') + theme_bw()
+```
+
+Create a train and test data set (call necessary libraries)
+
+```{r}
+library(caTools)
+
+sample <- sample.split(df$Private, SplitRatio = .7)
+train <- subset(df, sample == T)
+test <- subset(df, sample == F)
+```
+
+Build the decision tree (call necessary libraries)
+
+```{r}
+library(rpart)
+
+# Pass in method as class since we are doing classification
+tree <- rpart(Private ~ ., method = 'class', data = train)
+printcp(tree)
+plot(tree, main = 'College Tree', uniform = T)
+text(tree, use.n = T, all = T)
+```
+
+Now predict using the test data 
+
+```{r}
+tree.pred <- predict(tree, test)
+head(tree.pred)
+
+tree.pred <- as.data.frame(tree.pred)
+
+# Apply this joiner function to the new Private column in this data frame to be used for comparison later
+joiner <- function(x){
+  if (x >= 0.5) {
+    return('Yes')
+  } else {
+    return('No')
+  }
+}
+
+tree.pred$Private <- sapply(tree.pred$Yes, joiner)
+print(head(tree.pred))
+# Now we can compare this column we created to the Private column in the test data set to measure the success
+
+table(tree.pred$Private, test$Private)
+# Here we see that the model was fairly successful in it's predictions and we can compare it to our Random Forest Model 
+```
+
+Now we can plot out the tree
+
+```{r}
+library(rpart.plot)
+prp(tree)
+```
+
+#################
+
+Now let's build a Random Forest Model
+
+```{r}
+library(randomForest)
+# We can see how the model performs based on the train data set
+priv.rf.model <- randomForest(Private ~ ., train, importance = T)
+priv.rf.model$confusion
+
+# We find it is easier to predict whether a college is Private rather than if it is not, which may be due to the amount of private school data
+
+# We can get the importance based on the Gini Impurity Index values since we included importance
+priv.rf.model$importance
+```
+
+Now we can predict
+
+```{r}
+rf.preds <- predict(priv.rf.model,test)
+table(rf.preds, test$Private)
+
+# We could say this model performed better than the single decision tree
+# This will be due to the risk that comes with the Type 1 and Type 2 errors
+  # Once that risk is evaluated, then we could more easily decide on a model
+```
+
