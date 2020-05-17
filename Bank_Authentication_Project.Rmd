@@ -4,7 +4,7 @@ author: "Kevin Torres"
 output: html_document
 ---
 
-**Task:** I will be using Wavelet transformation data to see if a bank note is authentic or fake by building a neural net and making predictions based off it. I will then compare it to a random forest model to compare accuracy.
+**Task:** I will be using Wavelet transformation data to see if a bank note is authentic or fake by building a neural net and making predictions based off it. I will then compare accuracy using a random forest model.
 
 **Dataset:** The dataset consists of statistical information of images, therefore exploratory data analysis of this data is not easily interpretable.
 
