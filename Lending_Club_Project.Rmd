@@ -1,0 +1,99 @@
+---
+title: "Lending Club Project"
+author: Kevin Torres
+output: html_document
+---
+
+**Task:** I will create a model to help predict people who showed a profile of having a high probability of paying investors back. I will try to classify and predict whether or not the borrower paid their loan back in full.
+
+**Dataset:** I will be using publicly available lending data from 2007-2010. This data is from Lending Club which connects people who need money with investors. 
+
+Load the .csv file and save it as a data frame called loans
+
+```{r setup, include=TRUE}
+loans <- read.csv('loan_data.csv')
+loans <- as.data.frame(loans)
+head(loans)
+str(loans)
+summary(loans)
+```
+
+Convert certain columns to categorical data (factor)
+
+```{r}
+loans$inq.last.6mths <- factor(loans$inq.last.6mths)
+loans$delinq.2yrs <- factor(loans$delinq.2yrs)
+loans$pub.rec <- factor(loans$pub.rec)
+loans$not.fully.paid <- factor(loans$not.fully.paid)
+loans$credit.policy <- factor(loans$credit.policy)
+
+str(loans)
+```
+
+Exploratory Data Analysis
+
+```{r}
+library(ggplot2)
+
+# Histogram of fico scores colored by whether the loan was fully paid or not
+ggplot(loans, aes(fico, fill = not.fully.paid)) + geom_histogram(color = 'black') + theme_bw()
+
+# Barplot of the purpose of loan counts, colored by whether the loan was fully paid or not
+ggplot(loans, aes(x = factor(purpose), fill = not.fully.paid)) + geom_bar(color ='black', position = position_dodge()) + theme_bw()
+
+# Scatterplot showing fico score versus interest rate 
+ggplot(loans, aes(int.rate,fico, color = not.fully.paid)) + geom_point(alpha = .4) + theme_bw()
+```
+
+Split data into train and test sets
+
+```{r}
+library(caTools)
+
+sample <- sample.split(loans$not.fully.paid, SplitRatio = .7)
+train <- subset(loans, sample == T)
+test <- subset(loans, sample == F)
+```
+
+Build and train a model using the svm function
+
+```{r}
+library(e1071)
+
+model <- svm(not.fully.paid ~ ., train)
+summary(model)
+```
+
+Only pass in test data that does not have a label 
+
+```{r}
+predicted.values <- predict(model, test[1:13])
+table(predicted.values, test$not.fully.paid)
+
+# These are bad results, model is predicting that everyone paid off their loan
+# We need to use the tune function to try out different cost and gamma values
+```
+
+Use the tune function to try out different cost and gamma values
+
+
+```{r}
+tuned.results <- tune(svm, train.x = not.fully.paid ~ ., data = train, kernel = 'radial', ranges = list(cost = c(100,125,150,200), gamma= c(.075,.1)))
+summary(tuned.results)
+
+# We find our best parameters are 100 and .075
+tuned.model <- svm(not.fully.paid ~ ., data = train, cost = 100, gamma = .075)
+```
+
+Make predictions based off this tuned model
+
+```{r}
+tuned.predictions <- predict(tuned.model, test[1:13])
+table(tuned.predictions, test$not.fully.paid)
+
+# Now we are no longer classifying everyone as paying off their loan
+```
+
+This model still is not too great but we could add more values to the ranges for cost and gamma but it would take time 
+
+
