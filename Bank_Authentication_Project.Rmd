@@ -1,7 +1,10 @@
 ---
 title: "Bank Authentication Project"
 author: "Kevin Torres"
-output: html_document
+output: 
+  html_document: 
+    keep_md: true
+  
 ---
 
 **Task:** I will be using Wavelet transformation data to see if a bank note is authentic or fake by building a neural net and making predictions based off it. I will then compare accuracy using a random forest model.
