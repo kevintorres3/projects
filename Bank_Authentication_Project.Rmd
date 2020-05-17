@@ -1,0 +1,91 @@
+---
+title: "Bank Authentication Project"
+author: "Kevin Torres"
+output: html_document
+---
+
+**Task:** I will be using Wavelet transformation data to see if a bank note is authentic or fake by building a neural net and making predictions based off it. I will then compare it to a random forest model to compare accuracy.
+
+**Dataset:** The dataset consists of statistical information of images, therefore exploratory data analysis of this data is not easily interpretable.
+
+Load csv file:
+
+```{r setup, include=TRUE}
+bank <- read.csv('Desktop/R Folder/bank_note_data.csv')
+head(bank)
+str(bank) 
+```
+
+Load necessary libraries and create train and test data sets
+
+```{r}
+library(caTools)
+
+split <- sample.split(bank$Class, SplitRatio = .7)
+train <- subset(bank, split == T)
+test <- subset(bank, split == F)
+```
+
+Build the Neural Net 
+
+```{r echo=TRUE}
+library(neuralnet)
+nn.bank <- neuralnet(Class ~ Image.Var + Image.Skew + Image.Curt + Entropy, data = train, hidden = 10, linear.output = F )
+plot(nn.bank, rep = 'best')
+```
+
+Predictions
+
+```{r}
+predicted.nn.values <- compute(nn.bank, test[,1:4])
+str(predicted.nn.values)
+head(predicted.nn.values$net.result)
+```
+
+Here we notice the net results are still probabilities and we could use the round function to fix this
+
+```{r}
+predictions <- sapply(predicted.nn.values$net.result, round)
+head(predictions)
+```
+
+Create a confusion matrix to see how we predicted 
+
+```{r}
+table(predictions, test$Class)
+
+# We should be suspicious of perfect results since we did not even normalize the data
+# We would typically normalize our data if there is a large range of min and max values between the column features
+```
+
+##############
+
+Compare to a Random Forest Model
+
+Load necessary libraries and create train and test data sets
+
+```{r}
+library(randomForest)
+
+# First we need to set the Class column to be a factor, not an int like neural nets
+bank$Class <- factor(bank$Class)
+
+split <- sample.split(bank$Class, SplitRatio = .7)
+train <- subset(bank, split == T)
+test <- subset(bank, split == F)
+```
+
+Build the model
+
+```{r}
+nn.rf.model <- randomForest(Class ~ ., train)
+nn.rf.model$confusion
+```
+
+Now we can predict
+```{r}
+rf.model.predict <- predict(nn.rf.model, test)
+table(rf.model.predict, test$Class)
+
+# This model was almost perfect, therefore we can conclude that we should not be suspicious of our perfect neural net model 
+```
