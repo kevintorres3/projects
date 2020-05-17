@@ -1,0 +1,252 @@
+---
+title: "Adult Classification Project"
+author: Kevin Torres
+output: html_document
+---
+
+**Task:** I will attempt to predict if peple in the data set belong in a certain class based on salary. (either making <= 50k or > 50k)
+
+**Dataset:** I will be using a dataset with information about adults including 15 variables. 
+
+Load csv file:
+
+```{r setup, include=TRUE}
+df = read.csv("adult_sal.csv")
+adult <- as.data.frame(df)
+head(adult)
+library(dplyr)
+```
+
+Remove the first column and show head, srt, and summary to get an idea of the data
+
+```{r}
+adult <- select(adult, -X)
+head(adult)
+str(adult)
+summary(adult)
+```
+
+Clean the data - Find categories to combine to simplify the data
+
+```{r}
+table(adult$type_employer)
+
+# Combine the employer type 
+
+unemp <- function(job){
+  job <- as.character(job)
+  if (job == 'Never-worked' | job == 'Without-pay') {
+    return('Unemployed')
+  } else{
+    return(job)
+  }
+}
+
+adult$type_employer <- sapply(adult$type_employer, unemp)
+table(adult$type_employer)
+```
+
+Do the same for Job
+
+```{r}
+# Local and State level jobs
+
+sl_gov <- function(job){
+  job <- as.character(job)
+  if (job == 'Local-gov' | job == 'State-gov') {
+    return('SL-gov')
+  } else{
+    return(job)
+  }
+}
+
+adult$type_employer <- sapply(adult$type_employer, sl_gov)
+
+table(adult$type_employer)
+
+# Self-employed
+
+self_emp <- function(job){
+  job <- as.character(job)
+  if (job == 'Self-emp-inc' | job == 'Self-emp-not-inc') {
+    return('Self-emp')
+  } else{
+    return(job)
+  }
+}
+
+adult$type_employer <- sapply(adult$type_employer, self_emp)
+
+table(adult$type_employer)
+```
+
+Do the same for Martial Status
+
+```{r}
+not_married <- function(status){
+  status <- as.character(status)
+  if (status == 'Divorced' | status == 'Separated' | status == 'Widowed') {
+    return('Not-Married')
+  } else{
+    return(status)
+  }
+}
+
+adult$marital <- sapply(adult$marital, not_married)
+
+table(adult$marital)
+
+married <- function(status){
+  status <- as.character(status)
+  if (status == 'Married-spouse-absent' | status == 'Married-AF-spouse' | status == 'Married-civ-spouse') {
+    return('Married')
+  } else{
+    return(status)
+  }
+}
+
+adult$marital <- sapply(adult$marital, married)
+
+table(adult$marital)
+```
+
+Clean data - Country column
+
+```{r}
+# Group the countries by continent
+Asia <- c('China', 'Hong', 'India', 'Iran', 'Cambodia', 'Japan', 'Laos', 'Philipines', 'Vietnam', 'Taiwan', 'Thailand')
+North.America <- c('Canada', 'United-States', 'Puerto-Rico')
+Europe <- c('England', 'France', 'Germany', 'Greece', 'Holand-Netherlands', 'Hungary', 'Ireland', 'Italy', 'Poland', 'Portugal', 'Scotland', 'Yugoslavia')
+Latin.and.South.America <- c('Columbia', 'Cuba', 'Dominican-Republic', 'Ecuador', 'El-Salvador', 'Guatemala', 'Haiti', 'Honduras', 'Mexico', 'Nicaragua', 'Outlying-US(Guam-USVI-etc)','Peru', 'Jamaica', 'Trinidad&Tobago')
+Other <- c('South')
+
+group_country <- function(ctry){
+  if (ctry %in% Asia) {
+    return('Asia')
+  } else if(ctry %in% North.America){
+    return('North.America')
+  } else if(ctry %in% Europe){
+    return('Europe')
+  } else if(ctry %in% Latin.and.South.America){
+    return('Latin.and.South.America')
+  } else{
+    return('Other')
+  }
+}
+
+adult$country <- sapply(adult$country, group_country)
+
+table(adult$country)
+```
+
+Rename country column 
+```{r}
+# Now make each of the cleaned columns factors
+
+adult$type_employer <- factor(adult$type_employer)
+adult$marital <- factor(adult$marital)
+adult$country <- factor(adult$country)
+
+adult <- rename(adult, region = country)
+str(adult)
+```
+
+Now that we have cleaned some of the data, lets check for NA values 
+
+```{r}
+library(Amelia)
+
+# First lets convert the responses with '?' to an NA response
+adult[adult == '?'] <- NA
+str(adult)
+table(adult$type_employer)
+```
+
+Now we can see the missing data on the map
+
+```{r}
+missmap(adult, main = 'Missingness Map', col = c("Yellow", 'Black'), legend = F)
+
+# Remove NA values, even though this is not necessarily the best thing to do in most cases
+
+adult <- na.omit(adult)
+
+# Now that the data is clean, further explore it using visualization
+
+str(adult)
+missmap(adult, main = 'Missingness Map', col = c("Yellow", 'Black'), legend = F)
+```
+
+Exploratory Data Analysis 
+
+```{r}
+library(ggplot2)
+# Histogram of ages, colored by income
+
+ggplot(adult, aes(x = age, fill = income)) + geom_histogram(binwidth = 1, color = 'black') + theme_bw()
+
+# Histogram of hours worked per week
+
+ggplot(adult, aes(x = hr_per_week)) + geom_histogram(color = 'black', fill = 'light grey') + theme_bw()
+
+# Barplot of region
+
+ggplot(adult, aes(y = region, fill = income)) + geom_bar(color = 'black')
+```
+
+Now it's time to create a train and test data set
+
+```{r}
+head(adult)
+library(caTools)
+
+sample <- sample.split(adult$income, SplitRatio = .7)
+train <- subset(adult, sample == T)
+test <- subset(adult, sample == F)
+```
+
+Build the Logistic Regression Model
+
+```{r}
+model <- glm(income ~ ., family = binomial(link = 'logit'), data = train)
+summary(glm(income ~ ., family = binomial(link = 'logit'), data = train))
+# Here we see a lot of significant factors so there might be more factor groups we could create
+```
+
+Try to remove predictive variables from the model to attempt to delete variables that do not significantly add to the fit (use step function)
+
+```{r}
+new.step.model <- step(model)
+summary(new.step.model)
+```
+
+Create a confuision matrix based on predicted values
+
+```{r}
+test$predicted.income <- predict(model, newdata = test, type = 'response')
+table(test$income, test$predicted.income > 0.5)
+```
+
+Get measurements based off confusion matrix
+
+```{r}
+# Accuracy 
+acc <- (6396+1409)/(6396+524+886+1409)
+acc
+# Recall
+rcl <- 6396/(6396+524)
+rcl
+# Precision
+prc <- 6396/(6396+886)
+prc
+```
+
+We can determine if this is a good model after we find out the cost associated with accuracy, precision, and recall. Some models want to maximize one over the other. 
+
+
+
+
+
+
+
+
