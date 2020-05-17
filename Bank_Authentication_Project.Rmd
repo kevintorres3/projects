@@ -1,9 +1,7 @@
 ---
 title: "Bank Authentication Project"
 author: "Kevin Torres"
-output: 
-  html_document: 
-    keep_md: true
+output: html_document
   
 ---
 
